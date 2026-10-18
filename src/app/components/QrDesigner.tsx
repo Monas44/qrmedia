@@ -1,5 +1,6 @@
 import QRCodeStyling, { type CornerDotType, type CornerSquareType, type DotType, type ErrorCorrectionLevel, type Options } from 'qr-code-styling';
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { hasNativeEyeDropper, LogoColorPicker, pickScreenColor } from './LogoColorPicker';
 import { Alert, Button, Field, Icon, Select } from './ui';
 
 interface Design {
@@ -124,9 +125,10 @@ async function downloadBlob(qr: QRCodeStyling, ext: 'png' | 'svg', name: string)
 function ColorInput({ id, label, value, onChange }: { id: string; label: string; value: string; onChange: (v: string) => void }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
+  const [canPick] = useState(hasNativeEyeDropper);
   return (
     <Field label={label} htmlFor={id}>
-      <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-surface px-2">
+      <div className="flex h-10 items-center gap-2 rounded-lg border border-line bg-surface pr-1 pl-2">
         <input id={id} type="color" value={value} onChange={(e) => onChange(e.target.value)} className="size-7 cursor-pointer rounded border-0 bg-transparent p-0" />
         <input
           aria-label={`${label} (hex)`}
@@ -139,6 +141,20 @@ function ColorInput({ id, label, value, onChange }: { id: string; label: string;
           maxLength={7}
           className="tabular w-full min-w-0 bg-transparent text-sm text-ink uppercase outline-none"
         />
+        {canPick && (
+          <button
+            type="button"
+            onClick={async () => {
+              const hex = await pickScreenColor();
+              if (hex) onChange(hex);
+            }}
+            title="Conta-gotas: pegar uma cor de qualquer lugar da tela"
+            aria-label={`Conta-gotas para ${label}`}
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-ink-2 hover:bg-surface-2 hover:text-ink"
+          >
+            <Icon name="pipette" className="size-4" />
+          </button>
+        )}
       </div>
     </Field>
   );
@@ -294,6 +310,13 @@ export function QrDesigner({ url, slug }: { url: string; slug: string }) {
                 <input id="qr-logo-size" type="range" min={15} max={40} value={Math.round(design.logoSize * 100)} onChange={(e) => set('logoSize', Number(e.target.value) / 100)} className="accent-[var(--accent)]" />
               </Field>
             </div>
+          )}
+          {design.logo && (
+            <LogoColorPicker
+              logo={design.logo}
+              current={{ fg: design.fg, cornerColor: design.cornerColor, bg: design.bg }}
+              onPick={(target, hex) => set(target, hex)}
+            />
           )}
         </div>
 
