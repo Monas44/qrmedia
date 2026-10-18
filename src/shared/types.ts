@@ -150,15 +150,27 @@ export interface ImportResultDTO {
 }
 
 export interface ClearScansInput {
-  /** Sem link_id = todos os links. */
+  /** Um link (compatibilidade). Sem link_id nem link_ids = todos os links. */
   link_id?: number | null;
-  /** Sem from/to = todo o histórico. Mesmo formato dos filtros de analytics. */
+  /** Vários links. Lista vazia é recusada (escolha pelo menos um). */
+  link_ids?: number[] | null;
+  /**
+   * Início e fim (fim inclusivo). Dia "2026-10-18" ou data e hora "2026-10-18 14:30"
+   * no horário de Brasília. Sem from/to = todo o histórico.
+   */
   from?: string | null;
   to?: string | null;
   /** 'all' = tudo; 'imported' = só registros importados/manuais. */
   only: 'all' | 'imported';
-  /** Precisa ser exatamente "APAGAR". */
-  confirm: string;
+  /** Precisa ser exatamente "APAGAR" (dispensado na prévia). */
+  confirm?: string;
+  /** true = só conta quantos seriam apagados, sem apagar. */
+  dry_run?: boolean;
+}
+
+export interface ClearResultDTO {
+  matched: number;
+  deleted: number;
 }
 
 export interface Paginated<T> {

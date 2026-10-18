@@ -3,7 +3,7 @@ import type { Database, SqlValue, Statement } from '../db';
 import { normalizeHeader, parseCsv } from '../lib/csv';
 import { randomHex, sha256Hex } from '../lib/crypto';
 import { AppError } from '../lib/http';
-import { parseAccessTime, parsePeriod } from '../lib/period';
+import { parseAccessTime } from '../lib/period';
 import { referrerHost } from '../lib/url';
 import { findLinkById } from '../repositories/links-repo';
 
@@ -215,25 +215,76 @@ export async function importScansCsv(db: Database, csv: string, linkId: number |
 
 // ---------- limpeza ----------
 
-export async function clearScans(db: Database, input: ClearScansInput): Promise<number> {
-  if (input.confirm !== 'APAGAR') throw new AppError(400, 'confirmation_required', 'Digite APAGAR para confirmar.');
-  const linkId = input.link_id ?? null;
-  if (linkId !== null && !(await findLinkById(db, linkId))) throw new AppError(404, 'not_found', 'Link não encontrado.');
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+const DAY_MS = 86_400_000;
+
+/**
+ * Limite do intervalo de limpeza. Aceita dia ("2026-10-18", horário de Brasília)
+ * ou data e hora ("2026-10-18 14:30[:15]", "18/10/2026 14:30", ISO com fuso).
+ * O fim é inclusivo: "até 14:30" inclui 14:30:59; "até 18/10" inclui o dia todo.
+ */
+function clearBound(raw: string, isEnd: boolean): Date {
+  const s = raw.trim();
+  if (DATE_ONLY.test(s)) {
+    const start = parseAccessTime(`${s} 00:00`);
+    if (!start) throw new AppError(400, 'invalid_period', `Data inválida: "${raw}".`);
+    return isEnd ? new Date(start.getTime() + DAY_MS) : start;
+  }
+  const date = parseAccessTime(s);
+  if (!date) throw new AppError(400, 'invalid_period', `Data/hora inválida: "${raw}". Use "18/10/2026 14:30" ou "2026-10-18 14:30".`);
+  if (!isEnd) return date;
+  const hasSeconds = /\d{1,2}:\d{2}:\d{2}/.test(s);
+  const hasZone = /(Z|[+-]\d{2}:?\d{2})$/i.test(s);
+  return new Date(date.getTime() + (hasZone ? 1 : hasSeconds ? 1000 : 60_000));
+}
+
+export interface ClearResult {
+  /** Registros que atendem aos filtros. */
+  matched: number;
+  /** Registros efetivamente apagados (0 na prévia). */
+  deleted: number;
+}
+
+/** Apaga (ou só conta, com dry_run) os scans que atendem aos filtros. */
+export async function clearScans(db: Database, input: ClearScansInput): Promise<ClearResult> {
+  if (!input.dry_run && input.confirm !== 'APAGAR') {
+    throw new AppError(400, 'confirmation_required', 'Digite APAGAR para confirmar.');
+  }
+
+  const ids = [...new Set([...(input.link_ids ?? []), ...(input.link_id ? [input.link_id] : [])])];
+  if (input.link_ids && input.link_ids.length === 0 && !input.link_id) {
+    throw new AppError(400, 'no_links_selected', 'Escolha pelo menos um QR code.');
+  }
+  if (ids.length > 0) {
+    const placeholders = ids.map(() => '?').join(', ');
+    const found = await db.prepare(`SELECT COUNT(*) AS n FROM links WHERE id IN (${placeholders})`).bind(...ids).first<{ n: number }>();
+    if ((found?.n ?? 0) !== ids.length) throw new AppError(404, 'not_found', 'Algum dos links escolhidos não existe mais.');
+  }
 
   const parts: string[] = [];
   const params: SqlValue[] = [];
-  if (linkId !== null) {
-    parts.push('link_id = ?');
-    params.push(linkId);
+  if (ids.length > 0) {
+    parts.push(`link_id IN (${ids.map(() => '?').join(', ')})`);
+    params.push(...ids);
   }
-  if (input.from || input.to) {
-    const period = parsePeriod(input.from, input.to);
-    parts.push('ts >= ?', 'ts < ?');
-    params.push(period.from.toISOString(), period.to.toISOString());
+  const from = input.from ? clearBound(input.from, false) : null;
+  const to = input.to ? clearBound(input.to, true) : null;
+  if (from && to && from >= to) throw new AppError(400, 'invalid_period', 'O início precisa ser anterior ao fim.');
+  if (from) {
+    parts.push('ts >= ?');
+    params.push(from.toISOString());
+  }
+  if (to) {
+    parts.push('ts < ?');
+    params.push(to.toISOString());
   }
   if (input.only === 'imported') parts.push("source <> 'qr'");
 
   const where = parts.length ? `WHERE ${parts.join(' AND ')}` : '';
+  const counted = await db.prepare(`SELECT COUNT(*) AS n FROM scans ${where}`).bind(...params).first<{ n: number }>();
+  const matched = counted?.n ?? 0;
+  if (input.dry_run) return { matched, deleted: 0 };
+
   const { changes } = await db.prepare(`DELETE FROM scans ${where}`).bind(...params).run();
-  return changes;
+  return { matched, deleted: changes };
 }

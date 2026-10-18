@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { z } from 'zod';
-import type { ImportResultDTO, SettingsDTO } from '../../../shared/types';
+import type { ClearResultDTO, ImportResultDTO, SettingsDTO } from '../../../shared/types';
 import type { AppEnv } from '../../env';
 import { AppError, ok, readJson } from '../../lib/http';
 import { clearScans, importScansCsv, insertManualScans, MANUAL_MAX_COUNT } from '../../services/scan-admin';
@@ -26,10 +26,12 @@ const importSchema = z.object({
 
 const clearSchema = z.object({
   link_id: z.number().int().positive().nullable().optional(),
+  link_ids: z.array(z.number().int().positive()).max(5000).nullable().optional(),
   from: z.string().max(40).nullable().optional(),
   to: z.string().max(40).nullable().optional(),
   only: z.enum(['all', 'imported']),
-  confirm: z.string(),
+  confirm: z.string().optional(),
+  dry_run: z.boolean().optional(),
 });
 
 const IMPORT_MAX_BYTES = 10 * 1024 * 1024;
@@ -60,6 +62,6 @@ export const dataRoutes = new Hono<AppEnv>()
     },
   )
   .post('/scans/clear', async (c) => {
-    const deleted = await clearScans(c.env.DB, clearSchema.parse(await readJson(c)));
-    return ok(c, { deleted });
+    const result = await clearScans(c.env.DB, clearSchema.parse(await readJson(c)));
+    return ok<ClearResultDTO>(c, result);
   });

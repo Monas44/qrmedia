@@ -163,14 +163,14 @@ describe('limpar histórico', () => {
     expect(await scanCount(link.id)).toBe(6);
 
     let res = await post('/scans/clear', { link_id: link.id, from: '2026-09-01', to: '2026-09-15', only: 'all', confirm: 'APAGAR' });
-    expect(await json(res)).toEqual({ ok: true, data: { deleted: 2 } });
+    expect(await json(res)).toEqual({ ok: true, data: { matched: 2, deleted: 2 } });
 
     res = await post('/scans/clear', { link_id: link.id, only: 'imported', confirm: 'APAGAR' });
-    expect(await json(res)).toEqual({ ok: true, data: { deleted: 3 } });
+    expect(await json(res)).toEqual({ ok: true, data: { matched: 3, deleted: 3 } });
     expect(await scanCount(link.id)).toBe(1); // sobrou o scan real
 
     res = await post('/scans/clear', { link_id: link.id, only: 'all', confirm: 'APAGAR' });
-    expect(await json(res)).toEqual({ ok: true, data: { deleted: 1 } });
+    expect(await json(res)).toEqual({ ok: true, data: { matched: 1, deleted: 1 } });
     expect(await scanCount(other.id)).toBe(1); // outro link intacto
   });
 });
@@ -182,5 +182,51 @@ describe('parseAccessTime', () => {
     expect(parseAccessTime('2026-10-18T14:30:00.000Z')?.toISOString()).toBe('2026-10-18T14:30:00.000Z');
     expect(parseAccessTime('2026-13-01 10:00')).toBeNull();
     expect(parseAccessTime('18/10/2026')).toBeNull();
+  });
+});
+
+describe('limpar histórico: horas, vários QR codes e prévia', () => {
+  async function setup() {
+    const a = await createLink({ slug: unique(), destination_url: 'https://exemplo.com/' });
+    const b = await createLink({ slug: unique(), destination_url: 'https://exemplo.com/' });
+    const c = await createLink({ slug: unique(), destination_url: 'https://exemplo.com/' });
+    for (const link of [a, b, c]) {
+      await post('/scans/manual', { link_id: link.id, ts: '2026-10-05 08:00', count: 1 });
+      await post('/scans/manual', { link_id: link.id, ts: '2026-10-05 12:30', count: 2 });
+      await post('/scans/manual', { link_id: link.id, ts: '2026-10-05 18:00', count: 4 });
+    }
+    return { a, b, c };
+  }
+
+  it('apaga só a faixa de horário escolhida, com fim inclusivo', async () => {
+    const { a } = await setup();
+    const res = await post('/scans/clear', { link_ids: [a.id], from: '2026-10-05 12:00', to: '2026-10-05 12:30', only: 'all', confirm: 'APAGAR' });
+    expect(await json(res)).toEqual({ ok: true, data: { matched: 2, deleted: 2 } }); // 12:30 incluído
+    expect(await scanCount(a.id)).toBe(5);
+  });
+
+  it('apaga de vários QR codes de uma vez e não toca nos outros', async () => {
+    const { a, b, c } = await setup();
+    const res = await post('/scans/clear', { link_ids: [a.id, b.id], from: '05/10/2026 00:00', to: '05/10/2026 23:59', only: 'all', confirm: 'APAGAR' });
+    expect(await json(res)).toEqual({ ok: true, data: { matched: 14, deleted: 14 } });
+    expect(await scanCount(a.id)).toBe(0);
+    expect(await scanCount(b.id)).toBe(0);
+    expect(await scanCount(c.id)).toBe(7);
+  });
+
+  it('prévia (dry_run) conta sem apagar e dispensa a confirmação', async () => {
+    const { a, b } = await setup();
+    const res = await post('/scans/clear', { link_ids: [a.id, b.id], from: '2026-10-05 08:00', to: '2026-10-05 12:29', only: 'all', dry_run: true });
+    expect(await json(res)).toEqual({ ok: true, data: { matched: 2, deleted: 0 } });
+    expect(await scanCount(a.id)).toBe(7);
+  });
+
+  it('recusa lista vazia de QR codes, link inexistente e início depois do fim', async () => {
+    const { a } = await setup();
+    expect((await post('/scans/clear', { link_ids: [], only: 'all', confirm: 'APAGAR' })).status).toBe(400);
+    expect((await post('/scans/clear', { link_ids: [a.id, 999999], only: 'all', confirm: 'APAGAR' })).status).toBe(404);
+    const res = await post('/scans/clear', { link_ids: [a.id], from: '2026-10-05 18:00', to: '2026-10-05 08:00', only: 'all', confirm: 'APAGAR' });
+    expect(res.status).toBe(400);
+    expect(await scanCount(a.id)).toBe(7);
   });
 });
