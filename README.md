@@ -83,8 +83,8 @@ curl -H "Authorization: Bearer $API_TOKEN" "https://go.meudominio.com/api/links/
 | `JWT_SECRET` | sim | Valor aleatório (mín. 16 caracteres) que assina o cookie de sessão. |
 | `API_TOKEN` | não | Token para integrações externas (mín. 16 caracteres). |
 | `PUBLIC_BASE_URL` | não | URL pública das URLs curtas e dos QR codes, ex.: `https://go.meudominio.com`. Vazio = origem da requisição. |
-| `DATABASE_PATH` | não | Arquivo SQLite. Padrão `./data/qr.db`; no Docker, `/data/qr.db`. |
-| `PORT` | não | Porta HTTP (o Railway define sozinho). |
+| `DATABASE_PATH` | não | **Só local.** Arquivo SQLite, padrão `./data/qr.db`. No Railway, não defina: o banco fica em `<volume>/qr.db`. |
+| `PORT` | não | **Só local.** O Railway define sozinho. |
 | `TRUST_PROXY` | não | `false` para ignorar `X-Forwarded-*` / `X-Real-IP` fora de um proxy confiável. Padrão: confia (Railway). |
 
 Para gerar valores aleatórios:
@@ -152,9 +152,9 @@ railway up
 
 ### 2. Criar o volume (obrigatório)
 
-Sem volume, o banco é apagado a cada deploy. No serviço: **clique com o botão direito → Attach Volume** (ou `Ctrl/Cmd + K → Volume`) e use o mount path **`/data`**.
+Sem volume, o banco é apagado a cada deploy. No serviço: **clique com o botão direito → Attach Volume** (ou `Ctrl/Cmd + K → Volume`) e use o mount path **`/data`**. Ative também os **backups** do volume.
 
-O servidor avisa no log se estiver rodando no Railway sem volume.
+O servidor **recusa iniciar** no Railway se não houver volume ou se `DATABASE_PATH` apontar para fora dele (o log mostra `ERRO DE CONFIGURAÇÃO`). Assim o deploy falha e a versão anterior continua no ar, em vez de subir com o banco vazio.
 
 ### 3. Variáveis
 
@@ -167,7 +167,9 @@ API_TOKEN=<opcional>
 PUBLIC_BASE_URL=https://go.meudominio.com
 ```
 
-`DATABASE_PATH=/data/qr.db` e `PORT` já vêm do Dockerfile e do Railway. Salvar as variáveis dispara um novo deploy.
+**Não** adicione `DATABASE_PATH` nem `PORT` no Railway: o banco vai para o volume e a porta é definida pelo Railway. Salvar as variáveis dispara um novo deploy.
+
+Para conferir, o log de inicialização deve mostrar `banco: /data/qr.db`.
 
 ### 4. Domínio
 
@@ -186,7 +188,7 @@ Abra `https://go.meudominio.com/healthz` (deve responder `{"ok":true}`) e depois
 
 ## Backups
 
-O banco inteiro é o arquivo `/data/qr.db` no volume. Ative os **backups de volume** do Railway (aba **Backups** do volume) para ter cópias automáticas.
+O banco inteiro é o arquivo `qr.db` no volume. Ative os **backups de volume** do Railway (aba **Backups** do volume) para ter cópias automáticas.
 
 ## Decisões e observações
 

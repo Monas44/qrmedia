@@ -4,6 +4,7 @@ import { migrate, openDatabase } from './db';
 import type { Env } from './env';
 import { createApp } from './index';
 import { BackgroundTasks } from './lib/background';
+import { resolveDatabasePath } from './lib/storage';
 import { RedirectCache } from './services/redirect-cache';
 
 const required = (name: string) => {
@@ -16,15 +17,15 @@ const required = (name: string) => {
 };
 
 const port = Number(process.env.PORT ?? 3000);
-const dbPath = process.env.DATABASE_PATH ?? './data/qr.db';
 // Atrás do proxy do Railway (padrão), confia em X-Forwarded-Proto/X-Real-IP.
 const trustProxy = process.env.TRUST_PROXY !== 'false';
 
-if (process.env.RAILWAY_ENVIRONMENT && !process.env.RAILWAY_VOLUME_MOUNT_PATH) {
-  console.warn(
-    'ATENÇÃO: nenhum volume do Railway está montado. O banco SQLite será APAGADO a cada deploy. ' +
-      'Crie um volume com mount path /data e use DATABASE_PATH=/data/qr.db.',
-  );
+let dbPath: string;
+try {
+  dbPath = resolveDatabasePath(process.env);
+} catch (err) {
+  console.error(`ERRO DE CONFIGURAÇÃO: ${(err as Error).message}`);
+  process.exit(1);
 }
 
 const db = openDatabase(dbPath);

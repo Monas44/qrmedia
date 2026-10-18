@@ -9,9 +9,9 @@ RUN npm run build && npm prune --omit=dev
 # ---- runtime ----
 FROM node:24-slim
 WORKDIR /app
+# O banco fica no volume do Railway (RAILWAY_VOLUME_MOUNT_PATH/qr.db); não defina DATABASE_PATH lá.
 ENV NODE_ENV=production \
-    PORT=3000 \
-    DATABASE_PATH=/data/qr.db
+    PORT=3000
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/migrations ./migrations
