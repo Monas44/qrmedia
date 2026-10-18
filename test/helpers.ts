@@ -7,6 +7,7 @@ import type { Env } from '../src/server/env';
 import { createApp } from '../src/server/index';
 import { BackgroundTasks } from '../src/server/lib/background';
 import { RedirectCache } from '../src/server/services/redirect-cache';
+import { SettingsStore } from '../src/server/services/settings';
 
 export const BASE = 'https://go.exemplo.com';
 export const BROWSER_UA =
@@ -20,6 +21,7 @@ export const env: Env = {
   DB: db,
   cache: new RedirectCache(),
   tasks: new BackgroundTasks(),
+  settings: new SettingsStore(),
   ADMIN_PASSWORD: 'senha-de-teste',
   JWT_SECRET: 'segredo-de-teste-com-32-caracteres!!',
   API_TOKEN: 'token-de-integracao-teste',

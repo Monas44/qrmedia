@@ -1,19 +1,31 @@
 import { useEffect, useState } from 'react';
 import type { Paginated, ScanRowDTO } from '@shared/types';
 import { api, qs } from '../../lib/api';
-import { deviceLabel, fmtDateTime, fmtInt, languageName } from '../../lib/format';
+import { deviceLabel, fmtDateTimeSec, fmtInt, languageName } from '../../lib/format';
 import { useApi } from '../../lib/useApi';
 import { Alert, Badge, Button, Card, EmptyState, Spinner } from '../ui';
 
 const PAGE_SIZE = 25;
 
-export function RecentScans({ basePath, params, showLink }: { basePath: string; params: Record<string, string | boolean>; showLink: boolean }) {
+const SOURCE_LABELS = { import: 'importado', manual: 'manual' } as const;
+
+export function RecentScans({
+  basePath,
+  params,
+  showLink,
+  refreshKey = 0,
+}: {
+  basePath: string;
+  params: Record<string, string | boolean>;
+  showLink: boolean;
+  refreshKey?: number;
+}) {
   const [page, setPage] = useState(1);
   const filterKey = JSON.stringify(params);
   useEffect(() => setPage(1), [filterKey]);
 
   const query = qs({ ...params, page, page_size: PAGE_SIZE });
-  const scans = useApi(() => api.get<Paginated<ScanRowDTO>>(`${basePath}${query}`), `${basePath}${query}`);
+  const scans = useApi(() => api.get<Paginated<ScanRowDTO>>(`${basePath}${query}`), `${basePath}${query}#${refreshKey}`);
   const pages = scans.data ? Math.max(1, Math.ceil(scans.data.total / PAGE_SIZE)) : 1;
 
   return (
@@ -27,7 +39,7 @@ export function RecentScans({ basePath, params, showLink }: { basePath: string; 
             <table className="w-full min-w-[620px] text-sm">
               <thead className="border-b border-line text-left text-xs text-muted">
                 <tr>
-                  <th className="px-4 py-2 font-medium sm:px-5">Data e hora</th>
+                  <th className="px-4 py-2 font-medium sm:px-5">Data e hora do acesso</th>
                   {showLink && <th className="px-2 py-2 font-medium">Link</th>}
                   <th className="px-2 py-2 font-medium">Dispositivo</th>
                   <th className="px-2 py-2 font-medium">Sistema / navegador</th>
@@ -39,7 +51,8 @@ export function RecentScans({ basePath, params, showLink }: { basePath: string; 
                 {scans.data.items.map((s) => (
                   <tr key={s.id} className="border-b border-line last:border-0">
                     <td className="tabular px-4 py-2 whitespace-nowrap text-ink sm:px-5">
-                      {fmtDateTime(s.ts)} {s.is_bot && <Badge>bot</Badge>}
+                      {fmtDateTimeSec(s.ts)} {s.is_bot && <Badge>bot</Badge>}{' '}
+                      {s.source !== 'qr' && <Badge tone="accent">{SOURCE_LABELS[s.source]}</Badge>}
                     </td>
                     {showLink && <td className="px-2 py-2 text-ink-2">/{s.slug}</td>}
                     <td className="px-2 py-2 text-ink-2">{deviceLabel(s.device_type)}</td>

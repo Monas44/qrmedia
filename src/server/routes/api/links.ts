@@ -24,6 +24,7 @@ const linkFields = {
   utm_medium: optionalText(100),
   utm_campaign: optionalText(100),
   is_active: z.boolean().optional(),
+  analytics_paused: z.boolean().optional(),
   expires_at: z.string().max(40).nullable().optional(),
 };
 

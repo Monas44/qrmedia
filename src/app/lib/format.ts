@@ -14,6 +14,9 @@ const dayMonth = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', day: '2-dig
 const weekdayLong = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC', weekday: 'short', day: '2-digit', month: 'short' });
 
 export const fmtDateTime = (iso: string) => dateTime.format(new Date(iso));
+const dateTimeSec = new Intl.DateTimeFormat('pt-BR', { timeZone: TIMEZONE, dateStyle: 'short', timeStyle: 'medium' });
+/** "18/10/2026, 14:30:15" no horário de Brasília. */
+export const fmtDateTimeSec = (iso: string) => dateTimeSec.format(new Date(iso));
 /** Formata um dia "YYYY-MM-DD" (já local) sem conversão de fuso. */
 export const fmtDay = (day: string) => dateOnly.format(new Date(`${day}T12:00:00Z`));
 export const fmtDayShort = (day: string) => dayMonth.format(new Date(`${day}T12:00:00Z`)).replace('.', '');

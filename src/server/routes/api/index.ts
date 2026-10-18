@@ -8,6 +8,7 @@ import { publicBaseUrl } from '../../lib/request';
 import { requireAuth } from '../../services/auth-service';
 import { authRoutes } from './auth';
 import { linkRoutes } from './links';
+import { dataRoutes } from './data';
 import { statsRoutes } from './stats';
 
 export const apiRoutes = new Hono<AppEnv>();
@@ -42,6 +43,7 @@ apiRoutes.use('*', requireAuth);
 apiRoutes.get('/config', (c) => ok<AppConfigDTO>(c, { base_url: publicBaseUrl(c), timezone: APP_TIMEZONE }));
 apiRoutes.route('/links', linkRoutes);
 apiRoutes.route('/', statsRoutes);
+apiRoutes.route('/', dataRoutes);
 
 apiRoutes.all('*', () => {
   throw new AppError(404, 'not_found', 'Rota da API não encontrada.');

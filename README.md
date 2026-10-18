@@ -53,6 +53,18 @@ Dockerfile · railway.json
 | `GET /api/links/:id/stats` · `GET /api/stats` | Todos os agregados em JSON (por link ou geral). |
 | `GET /api/links/:id/scans` · `GET /api/scans` | Scans recentes paginados (`?page=&page_size=`), sem dados pessoais. |
 | `GET /api/links/:id/scans/export` · `GET /api/scans/export` | CSV (até 50.000 linhas, em streaming). |
+| `GET/PATCH /api/settings` | Pausa global da coleta (`{ "analytics_paused": true }`). A pausa por link é o campo `analytics_paused` em `PATCH /api/links/:id`. |
+| `POST /api/scans/manual` | Lança N acessos numa data/hora (`{ link_id, ts: "2026-10-18 14:30", count, device_type? }`, horário de Brasília). |
+| `POST /api/scans/import` | Importa CSV (`{ csv, link_id? }`). Tudo ou nada: com qualquer linha inválida, nada é gravado e a resposta lista os erros. |
+| `POST /api/scans/clear` | Apaga scans (`{ link_id?, from?, to?, only: "all" \| "imported", confirm: "APAGAR" }`). |
+
+### Gerenciar dados (aba Analytics)
+
+- **Pausar coleta:** geral ou por link. Os QR continuam redirecionando, só não registram acessos.
+- **Adicionar acessos:** lança acessos com data, hora, quantidade e dispositivo.
+- **Importar CSV:** colunas `data` + `hora` (ou `data_hora`), `slug` (no analytics geral) e opcionais `dispositivo`, `quantidade`, `sistema`, `navegador`, `origem`, `idioma`. O CSV exportado pelo painel também é aceito, então serve de backup.
+- **Limpar histórico:** do período selecionado ou de tudo; todos os registros ou só os importados/manuais.
+- **Origem dos dados:** cada scan tem `source` = `qr` (leitura real), `import` ou `manual`. A tabela de scans, o CSV e a API mostram a origem, e o analytics informa quantos registros importados/manuais estão incluídos nos números.
 
 Parâmetros comuns de analytics:
 

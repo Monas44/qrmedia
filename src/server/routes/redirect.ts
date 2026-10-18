@@ -22,8 +22,8 @@ redirectRoutes.get('/:slug', async (c) => {
   if (!link.active) return inactivePage();
   if (link.expires_at && Date.parse(link.expires_at) <= Date.now()) return expiredPage();
 
-  // HEAD é usado por verificadores de link; não conta como scan.
-  if (c.req.method === 'GET') {
+  // HEAD (verificadores de link) e coleta pausada (global ou do link) não gravam scan.
+  if (c.req.method === 'GET' && link.track && !c.env.settings.analyticsPaused) {
     const headers = c.req.raw.headers;
     c.env.tasks.run(recordScan(c.env, headers, clientIp(headers, c.env.REMOTE_ADDR), link.id));
   }

@@ -11,6 +11,7 @@ export interface LinkRow {
   utm_medium: string | null;
   utm_campaign: string | null;
   is_active: number;
+  analytics_paused: number;
   expires_at: string | null;
   created_at: string;
   updated_at: string;
@@ -26,7 +27,7 @@ export type NewLink = Omit<LinkRow, 'id'>;
 export type LinkChanges = Partial<Omit<LinkRow, 'id' | 'slug' | 'created_at'>>;
 
 const COLUMNS =
-  'id, slug, destination_url, title, tags, utm_source, utm_medium, utm_campaign, is_active, expires_at, created_at, updated_at';
+  'id, slug, destination_url, title, tags, utm_source, utm_medium, utm_campaign, is_active, analytics_paused, expires_at, created_at, updated_at';
 
 export function findLinkBySlug(db: Database, slug: string) {
   return db.prepare(`SELECT ${COLUMNS} FROM links WHERE slug = ?1`).bind(slug).first<LinkRow>();
@@ -81,13 +82,13 @@ export async function listTags(db: Database): Promise<string[]> {
 export async function insertLink(db: Database, link: NewLink): Promise<LinkRow> {
   const row = await db
     .prepare(
-      `INSERT INTO links (slug, destination_url, title, tags, utm_source, utm_medium, utm_campaign, is_active, expires_at, created_at, updated_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+      `INSERT INTO links (slug, destination_url, title, tags, utm_source, utm_medium, utm_campaign, is_active, expires_at, created_at, updated_at, analytics_paused)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
        RETURNING ${COLUMNS}`,
     )
     .bind(
       link.slug, link.destination_url, link.title, link.tags, link.utm_source, link.utm_medium,
-      link.utm_campaign, link.is_active, link.expires_at, link.created_at, link.updated_at,
+      link.utm_campaign, link.is_active, link.expires_at, link.created_at, link.updated_at, link.analytics_paused,
     )
     .first<LinkRow>();
   if (!row) throw new Error('insert_link_failed');

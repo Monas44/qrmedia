@@ -61,6 +61,7 @@ export async function buildStats(db: Database, period: Period, linkId: number | 
       peak_day: pctChange(kpis.peak_day?.count ?? 0, previous.peak_day?.count ?? 0),
     },
     bot_scans: raw.botScans,
+    imported_scans: raw.importedScans,
     daily,
     heatmap: raw.heatmap,
     devices: raw.devices,
@@ -77,7 +78,7 @@ export async function buildStats(db: Database, period: Period, linkId: number | 
 export const CSV_MAX_ROWS = 50_000;
 const CSV_CHUNK = 2_000;
 const CSV_COLUMNS: (keyof ScanRowDTO | 'ts_local')[] = [
-  'ts', 'ts_local', 'slug', 'device_type', 'os', 'browser', 'referrer', 'language', 'is_bot',
+  'ts', 'ts_local', 'slug', 'device_type', 'os', 'browser', 'referrer', 'language', 'is_bot', 'source',
 ];
 
 function csvCell(value: unknown): string {

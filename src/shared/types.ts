@@ -22,6 +22,8 @@ export interface LinkDTO {
   utm_medium: string | null;
   utm_campaign: string | null;
   is_active: boolean;
+  /** Coleta de scans pausada para este link (o redirect continua). */
+  analytics_paused: boolean;
   expires_at: string | null;
   created_at: string;
   updated_at: string;
@@ -53,6 +55,7 @@ export interface LinkInput {
   utm_medium?: string | null;
   utm_campaign?: string | null;
   is_active?: boolean;
+  analytics_paused?: boolean;
   expires_at?: string | null;
 }
 
@@ -88,6 +91,8 @@ export interface StatsDTO {
   /** Variação % vs período anterior; null quando o anterior é zero. */
   change: { total: number | null; unique_visitors: number | null; daily_average: number | null; peak_day: number | null };
   bot_scans: number;
+  /** Scans no período vindos de importação ou lançamento manual (já incluídos nos números). */
+  imported_scans: number;
   daily: { day: string; count: number; unique: number }[];
   /** dow: 0 = domingo … 6 = sábado; hour: 0–23 (America/Sao_Paulo). */
   heatmap: { dow: number; hour: number; count: number }[];
@@ -110,6 +115,50 @@ export interface ScanRowDTO {
   referrer: string | null;
   language: string | null;
   is_bot: boolean;
+  source: ScanSource;
+}
+
+/** 'qr' = leitura real do QR; 'import' = CSV; 'manual' = lançado no painel. */
+export type ScanSource = 'qr' | 'import' | 'manual';
+
+export interface SettingsDTO {
+  analytics_paused: boolean;
+}
+
+export interface ManualScansInput {
+  link_id: number;
+  /** Data e hora do acesso: ISO 8601 ou "YYYY-MM-DD HH:MM[:SS]" (horário de Brasília). */
+  ts: string;
+  count: number;
+  device_type?: 'mobile' | 'tablet' | 'desktop' | null;
+  os?: string | null;
+  browser?: string | null;
+  language?: string | null;
+  referrer?: string | null;
+}
+
+export interface ImportScansInput {
+  csv: string;
+  /** Obrigatório se o CSV não tiver a coluna "slug". */
+  link_id?: number | null;
+}
+
+export interface ImportResultDTO {
+  imported: number;
+  rows: number;
+  errors: { line: number; message: string }[];
+}
+
+export interface ClearScansInput {
+  /** Sem link_id = todos os links. */
+  link_id?: number | null;
+  /** Sem from/to = todo o histórico. Mesmo formato dos filtros de analytics. */
+  from?: string | null;
+  to?: string | null;
+  /** 'all' = tudo; 'imported' = só registros importados/manuais. */
+  only: 'all' | 'imported';
+  /** Precisa ser exatamente "APAGAR". */
+  confirm: string;
 }
 
 export interface Paginated<T> {

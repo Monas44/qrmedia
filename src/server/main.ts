@@ -6,6 +6,7 @@ import { createApp } from './index';
 import { BackgroundTasks } from './lib/background';
 import { resolveDatabasePath } from './lib/storage';
 import { RedirectCache } from './services/redirect-cache';
+import { SettingsStore } from './services/settings';
 
 const required = (name: string) => {
   const value = process.env[name];
@@ -33,10 +34,14 @@ const applied = migrate(db, resolve(process.env.MIGRATIONS_DIR ?? './migrations'
 if (applied.length) console.log(`Migrations aplicadas: ${applied.join(', ')}`);
 
 const tasks = new BackgroundTasks();
+const settings = new SettingsStore();
+await settings.load(db);
+if (settings.analyticsPaused) console.log('Coleta de analytics está PAUSADA (configuração do painel).');
 const baseEnv: Omit<Env, 'REMOTE_ADDR'> = {
   DB: db,
   cache: new RedirectCache(),
   tasks,
+  settings,
   ADMIN_PASSWORD: required('ADMIN_PASSWORD'),
   JWT_SECRET: required('JWT_SECRET'),
   API_TOKEN: process.env.API_TOKEN || undefined,

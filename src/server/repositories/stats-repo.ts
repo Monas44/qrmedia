@@ -33,6 +33,7 @@ export interface RawStats {
   prevTotals: { total: number; unique_visitors: number };
   prevPeak: { day: string; count: number } | null;
   botScans: number;
+  importedScans: number;
   daily: { day: string; count: number; unique: number }[];
   heatmap: { dow: number; hour: number; count: number }[];
   devices: CountItem[];
@@ -81,6 +82,7 @@ export async function aggregateStats(db: Database, f: ScanFilter, prev: ScanFilt
     groupBy('browser', 12),
     groupBy('referrer', 15),
     groupBy('language', 15),
+    db.prepare("SELECT COUNT(*) AS count FROM scans s WHERE " + w.sql + " AND s.source <> 'qr'").bind(...w.params),
   ];
 
   if (f.linkId === null) {
@@ -110,11 +112,12 @@ export async function aggregateStats(db: Database, f: ScanFilter, prev: ScanFilt
     browsers: rows(8),
     referrers: rows(9),
     languages: rows(10),
-    topLinks: f.linkId === null ? rows(11) : [],
+    importedScans: one<{ count: number }>(11)?.count ?? 0,
+    topLinks: f.linkId === null ? rows(12) : [],
   };
 }
 
-const SCAN_ROW_SQL = `s.id, s.ts, s.link_id, l.slug, s.device_type, s.os, s.browser, s.referrer, s.language, s.is_bot`;
+const SCAN_ROW_SQL = `s.id, s.ts, s.link_id, l.slug, s.device_type, s.os, s.browser, s.referrer, s.language, s.is_bot, s.source`;
 
 type RawScanRow = Omit<ScanRowDTO, 'is_bot'> & { is_bot: number };
 const toScanRow = (r: RawScanRow): ScanRowDTO => ({ ...r, is_bot: r.is_bot === 1 });

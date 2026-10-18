@@ -1,6 +1,7 @@
 import type { Database } from './db';
 import type { RedirectCache } from './services/redirect-cache';
 import type { BackgroundTasks } from './lib/background';
+import type { SettingsStore } from './services/settings';
 
 export interface Env {
   DB: Database;
@@ -8,6 +9,8 @@ export interface Env {
   cache: RedirectCache;
   /** Tarefas que rodam depois da resposta (registro de scans). */
   tasks: BackgroundTasks;
+  /** Configurações gerais em memória (ex.: pausa global da coleta). */
+  settings: SettingsStore;
   ADMIN_PASSWORD: string;
   JWT_SECRET: string;
   /** Token opcional para integrações externas (Authorization: Bearer). */

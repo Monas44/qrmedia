@@ -7,6 +7,7 @@ import { PRESET_LABELS, presetPeriod, todayLocal, type PeriodPreset, type Period
 import { useApi } from '../../lib/useApi';
 import { Alert, Icon, Input, Segmented, Spinner, Toggle } from '../ui';
 import { BarList } from './BarList';
+import { DataManagement } from './DataManagement';
 import { DailyChart } from './DailyChart';
 import { DeviceDonut } from './DeviceDonut';
 import { Heatmap } from './Heatmap';
@@ -43,7 +44,9 @@ export function AnalyticsDashboard({ linkId }: { linkId?: number }) {
   const scope = linkId ? `/links/${linkId}` : '';
   const params = { from: period.from, to: period.to, bots };
   const query = qs(params);
-  const stats = useApi(() => api.get<StatsDTO>(`${scope}/stats${query}`), `${scope}${query}`);
+  // Incrementado após pausar/importar/lançar/limpar, para recarregar números e tabela.
+  const [version, setVersion] = useState(0);
+  const stats = useApi(() => api.get<StatsDTO>(`${scope}/stats${query}`), `${scope}${query}#${version}`);
   const s = stats.data;
 
   const setPreset = (preset: PeriodPreset) =>
@@ -78,6 +81,8 @@ export function AnalyticsDashboard({ linkId }: { linkId?: number }) {
         </div>
       </div>
 
+      <DataManagement linkId={linkId} period={period} onChanged={() => setVersion((v) => v + 1)} />
+
       {stats.error && <Alert>{stats.error}</Alert>}
       {!s && stats.loading && <Spinner label="Calculando estatísticas…" />}
 
@@ -86,6 +91,7 @@ export function AnalyticsDashboard({ linkId }: { linkId?: number }) {
           <p className="text-xs text-muted">
             {fmtDay(period.from)} – {fmtDay(period.to)} · comparado com os {s.range.days} {s.range.days === 1 ? 'dia anterior' : 'dias anteriores'} · horário de Brasília
             {!bots && s.bot_scans > 0 && ` · ${fmtInt(s.bot_scans)} acessos de bots excluídos`}
+            {s.imported_scans > 0 && ` · inclui ${fmtInt(s.imported_scans)} ${s.imported_scans === 1 ? 'registro importado ou manual' : 'registros importados ou manuais'}`}
           </p>
 
           <KpiCards stats={s} />
@@ -117,7 +123,7 @@ export function AnalyticsDashboard({ linkId }: { linkId?: number }) {
             )}
           </div>
 
-          <RecentScans basePath={`${scope}/scans`} params={params} showLink={!linkId} />
+          <RecentScans basePath={`${scope}/scans`} params={params} showLink={!linkId} refreshKey={version} />
         </div>
       )}
     </div>

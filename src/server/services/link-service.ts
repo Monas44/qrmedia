@@ -20,6 +20,7 @@ export function toRedirectRecord(row: LinkRow): RedirectRecord {
     url: buildFinalUrl(row.destination_url, row),
     active: row.is_active === 1,
     expires_at: row.expires_at,
+    track: row.analytics_paused !== 1,
   };
 }
 
@@ -36,6 +37,7 @@ export function toLinkDTO(row: LinkRow, baseUrl: string): LinkDTO {
     utm_medium: row.utm_medium,
     utm_campaign: row.utm_campaign,
     is_active: row.is_active === 1,
+    analytics_paused: row.analytics_paused === 1,
     expires_at: row.expires_at,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -109,6 +111,7 @@ export async function createLink(env: Env, input: LinkInput): Promise<LinkRow> {
     utm_medium: emptyToNull(input.utm_medium) ?? null,
     utm_campaign: emptyToNull(input.utm_campaign) ?? null,
     is_active: input.is_active === false ? 0 : 1,
+    analytics_paused: input.analytics_paused ? 1 : 0,
     expires_at: normalizeExpiry(input.expires_at) ?? null,
     created_at: now,
     updated_at: now,
@@ -151,6 +154,7 @@ export async function patchLink(env: Env, id: number, patch: LinkPatch): Promise
     utm_medium: emptyToNull(patch.utm_medium),
     utm_campaign: emptyToNull(patch.utm_campaign),
     is_active: patch.is_active === undefined ? undefined : patch.is_active ? 1 : 0,
+    analytics_paused: patch.analytics_paused === undefined ? undefined : patch.analytics_paused ? 1 : 0,
     expires_at: normalizeExpiry(patch.expires_at),
     updated_at: new Date().toISOString(),
   };

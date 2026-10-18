@@ -3,6 +3,8 @@ export interface RedirectRecord {
   url: string; // destino final, já com UTMs
   active: boolean;
   expires_at: string | null;
+  /** false quando a coleta deste link está pausada. */
+  track: boolean;
 }
 
 /**

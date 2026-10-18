@@ -67,6 +67,32 @@ export function parsePeriod(fromRaw?: string | null, toRaw?: string | null, now 
   };
 }
 
+/**
+ * Data e hora de um acesso informada por pessoas (importação/lançamento manual).
+ * Aceita ISO 8601 com fuso, ou data + hora sem fuso no horário de Brasília:
+ * "2026-10-18 14:30[:15]", "2026-10-18T14:30", "18/10/2026 14:30[:15]".
+ */
+export function parseAccessTime(input: string): Date | null {
+  const s = input.trim();
+  if (/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:?\d{2})$/i.test(s)) {
+    const ms = Date.parse(s);
+    return Number.isNaN(ms) ? null : new Date(ms);
+  }
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})[ ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  const m = iso ? [iso[1], iso[2], iso[3], iso[4], iso[5], iso[6]] : br ? [br[3], br[2], br[1], br[4], br[5], br[6]] : null;
+  if (!m) return null;
+
+  const [y, mo, d, h, mi, sec] = m.map((v) => Number(v ?? 0)) as [number, number, number, number, number, number];
+  const local = Date.UTC(y, mo - 1, d, h, mi, sec);
+  const check = new Date(local);
+  // Rejeita datas impossíveis (ex.: 31/02) que o Date.UTC "corrigiria".
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() !== mo - 1 || check.getUTCDate() !== d || h > 23 || mi > 59 || sec > 59) {
+    return null;
+  }
+  return new Date(local - OFFSET_MS);
+}
+
 /** Lista os dias locais cobertos por [from, to). */
 export function eachLocalDay(from: Date, to: Date): string[] {
   const days: string[] = [];
