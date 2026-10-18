@@ -11,13 +11,15 @@ import { notFoundPage } from './views/pages';
 export interface AppOptions {
   /** Pasta com o build do painel (contém app/index.html). */
   clientDir: string;
+  /** Onde o banco está gravado; exposto no /healthz para conferir a persistência. */
+  storage?: 'volume' | 'local';
 }
 
-export function createApp({ clientDir }: AppOptions) {
+export function createApp({ clientDir, storage = 'local' }: AppOptions) {
   const app = new Hono<AppEnv>();
   app.onError(errorHandler);
 
-  app.get('/healthz', (c) => c.json({ ok: true }));
+  app.get('/healthz', (c) => c.json({ ok: true, storage }));
   app.route('/api', apiRoutes);
 
   // Painel: arquivos com hash em /app/assets são imutáveis; o resto da SPA recebe o index.html.

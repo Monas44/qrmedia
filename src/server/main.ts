@@ -43,7 +43,9 @@ const baseEnv: Omit<Env, 'REMOTE_ADDR'> = {
   PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL || undefined,
 };
 
-const app = createApp({ clientDir: resolve(process.env.CLIENT_DIR ?? './dist/client') });
+// No Railway, resolveDatabasePath só aceita caminhos dentro do volume.
+const storage = process.env.RAILWAY_VOLUME_MOUNT_PATH && process.env.RAILWAY_ENVIRONMENT ? 'volume' : 'local';
+const app = createApp({ clientDir: resolve(process.env.CLIENT_DIR ?? './dist/client'), storage });
 
 const server = serve(
   {

@@ -6,7 +6,7 @@ describe('servidor Node', () => {
   it('responde ao healthcheck do Railway', async () => {
     const res = await call('/healthz');
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
+    expect(await res.json()).toEqual({ ok: true, storage: 'local' });
   });
 
   it.each(['/app/', '/app/links/42', '/app/analytics'])('entrega o index.html da SPA em %s', async (path) => {
